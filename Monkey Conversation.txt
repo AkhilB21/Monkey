@@ -1,0 +1,384 @@
+Please take a note of the below issues:
+
+run_nse_engine.bat is not downloading data into APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1\data - Not sure where that downloaded data is going.
+
+I have locally downloaded data that updates daily through a python script, but when i try to change the path for data directory it does not allow update to below path:
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily.
+
+Under Watchlist JSON File, it does not take etmoney_stocks_list.json or smallcap500.json even when path and file name are given.
+
+Since above data is not updating, I am not able to generate Apollo Recovery and Apollo Momentum candidates.
+
+Confirm your understanding of above issues and share your plan for resolution. Once I approve, you can go ahead with the resolution plan.
+
+hought
+The user wants me to update the anchored summary using the conversation history. The template shows the structure. I need to merge the previous summary with new facts from this conversation. Key new developments in this conversation:
+
+1. Sheet verification: RSI fixed (no longer identical to Stochastic; RELIANCE sheet RSI=53.56 vs real RSI14=53.31), but Relative Volume still broken (100% identical to volume — and "volume" column is itself a ratio, not actual volume).
+
+2. Built v4.7 (originally started as v4.6, bumped to v4.7 because v4.6 CHANGELOG entry existed for Chartink pipeline):
+   - Pool E — Equity Analytics (21 pts additive): E1 Near 52W Low (5), E2 Stochastic Oversold Turn (5), E3 Relative Volume Surge (4), E4 VPT Accumulation (4), E5 50-SMA Recovery Zone (3)
+   - Entry Gates: G1 PE sanity (etmoney JSON, PE_MAX=100), G2 liquidity floor (20-day avg traded value >= ₹20 Cr), G3 52W-Low proximity (close <= +75% above trailing 52W low), G4 52W-High distance (52W high >= 1.10x close)
+   - New modules: apollo_core/gates.py, apollo_core/fundamentals.py (loads etmoney_stocks_list.json)
+   - New indicators: Stochastic %K/%D, VPT, SMA50/SMA20 in indicators.py + eod2 alias map
+   - Renko Hard Gate discovered to be dead code (eval_renko_signals never called, classify_score never receives r_points)
+   - GATE-BLOCKED events in backtest, ALERT_GATE_BLOCKED in live signal_monitor
+   - tests/preflight.py created (12 original + 4 new = 10 checks currently, all passing)
+   - app.py title bumped to v4.7 — Equity Analytics & Entry Gates
+   - etmoney_stocks_list.json copied to /workspace/apollo_engine/
+
+3. Backtest results (2022→2026, gates on vs off):
+   - APOLLO PE=123: 49→0 entries, +343%→0% (PE>100 blocks)
+   - CYIENTDLM PE=73: 21→9, +51%→+33%
+   - SYRMA PE=83: 34→12, +160%→+57%
+   - JYOTICNC PE=55: 17→13, −9%→−24%
+   - KAYNES PE=70: 24→9, +33%→−9%
+
+4. Deliverables: APOLLO_LIVE_010826_v1.zip (554 KB) at /workspace/APOLLO_LIVE_010826_v1.zip, /tmp/opencode/deliver/, /tmp/opencode/Monkey/download/. Preflight 10/10 pass on fresh extract.
+
+5. Latest user issues (new — need to be primary focus):
+   - run_nse_engine.bat not downloading data into APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1\data — unknown where data goes
+   - User has locally downloaded data updated daily via Python script at: C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily — but can't change data dir path in the UI
+   - Watchlist JSON File doesn't accept etmoney_stocks_list.json or smallcap500.json even with path and filename
+   - Since data not updating, can't generate Apollo Recovery / Apollo Momentum candidates
+   - User asked to confirm understanding and share plan for resolution before proceeding — no approval yet
+
+6. Also: zip access issue — user couldn't access zip; GitHub push blocked (credential helper 500); served via HTTP preview link https://8890-75c268c18da5f324.monkeycode-ai.live/APOLLO_LIVE_010826_v1.zip (HTTP 200 verified).
+
+Architecture facts learned:
+- app.py uses `st.session_state.data_dir` (backtest_engine/app.py line 780 area) — data dir picker; `load_eod2_stock(data_dir, symbol)` from eod2_loader scans CSV dir
+- data_replay.py BarReplay uses load_eod2_stock(self.data_dir, self.symbol)
+- run_nse_engine.bat invokes nse_engine; data_feed.py uses yfinance cache; `--sync-data <path>` flag copies CSVs
+- Watchlist loader: live_engine/watchlist.py load_watchlist — expects {"sym": "...", "name": ..., "sector": ...} list format; my_watchlist.json has 515 entries that format
+- etmoney_stocks_list.json schema: list of dicts {stockId, displayName, scripCode, mktCapDesc, industryName, currPrice, prevClose, returnPerc1D, mktCap, high52W, low52W, currVol, ratioPE, stockUrl, lastTradedPriceDateTime}
+- smallcap500.json exists in engine root (44074 bytes)
+
+Now for the summary — the "Goal" should reflect the current task: fixing data path/watchlist issues so Apollo Recovery/Momentum candidates generate.
+
+Next steps: since user said "Confirm your understanding... share plan... Once I approve, you can go ahead" — the immediate next step is to present understanding + resolution plan and WAIT for approval. The plan should cover:
+1. run_nse_engine.bat data download destination — investigate where yfinance downloads go (data_feed.py cache + --sync-data flag behavior); ensure it writes into apollo_engine/data
+2. Data directory path — make app.py/backtest data-dir setting persist and accept the local eod2 path (C:\Users\Akhilesh Bhardwaj\...\eod2_data\daily); note the double "APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1" nesting from unzip suggests user extracted zip into same-named folder; data dir picker may be resetting/not persisting
+3. Watchlist JSON — my_watchlist.json format expects {"sym": "...", "name": ..., "sector": ...}; etmoney/smallcap have different schema; need adapter converting scripCode→{sym: "SYMBOL.NS"} or loader flexibility; also path may be hardcoded DEFAULT_WATCHLIST_PATH
+4. Then candidates generation: run_pipeline 12 scans → my_watchlist.json; if data/missing blocks scans.
+
+I should keep terse. Include the critical new findings, keep relevant old context (paths, repo). Remove stale: the "In Progress" analytics recommendations is now superseded. The zips list, deliverable facts, gate calibration threshold note (user should A/B test — JYOTICNC/KAYNES hurt).
+
+Also should preserve that user approved? No — user asked for plan and approval pending. So "Blocked: awaiting approval of resolution plan".
+
+Version facts: v4.7 delivered 2026-08-01; preflight 10 checks; renamed from earlier v4.6 plan. The app title: "Multi-timeframe RSI Recovery Scoring Engine — NSE Backtester v4.7 — Equity Analytics & Entry Gates".
+
+Environment: Python 3.11.2, deps installed. Git repo /workspace branch master, Monkey repo /tmp/opencode/Monkey branch main, commit created for zip but push FAILED (credential helper status 500, no username device). This is relevant for delivery approach: use HTTP preview server on port 8890.
+
+Also there's a pre-existing v4.6 CHANGELOG entry (Chartink pipeline) — that's why v4.7 was used.
+
+Keep the Karpathy/user preference constraints, versioning rules, Hanuman-ji theme. Keep scoring architecture constraints.
+
+The user wants "exact output structure" from the template with no template tags. Use the section headings exactly: Goal, Constraints & Preferences, Progress (Done / In Progress / Blocked), Key Decisions, Next Steps, Critical Context, Relevant Files. Note nested subsections under Progress are in the original template — keep them.
+
+I'll write in English (conversation is English).
+
+Goal
+
+    Resolve the user's v4.7 zip issues (data not downloading into data/, data-dir path not updatable in UI, watchlist JSON files rejected) so Apollo Recovery / Apollo Momentum candidates can be generated — pending user approval of the resolution plan.
+
+Constraints & Preferences
+
+    User is AkhilB21; repo https://github.com/AkhilB21/Monkey is fully for this build.
+    Karpathy rules from Instructions For Engines.docx: think before coding, simplicity first, surgical changes, goal-driven execution, no over-engineering, surface assumptions/tradeoffs, push back when warranted.
+    User asked to confirm understanding and share a resolution plan FIRST; no code changes until approval.
+    Scoring architecture must stay: 21 mature + 12 IPO signals, RSI recovery profile D/4H/W, 0-100 score, ENTRY_THRESHOLD=70, EXIT_THRESHOLD=50; v4.7 added Pool E (21 pts) + entry gates.
+    Versioning rules (PROJECT_INSTRUCTIONS.md): zip naming [ENGINE_NAME]_[ddmmyy]_v[N].zip; app.py title Multi-timeframe RSI Recovery Scoring Engine — NSE Backtester vX.Y.Z — <codename> must match zip version; version-bump checklist: module headers, app.py header/title, preflight CURRENT_VERSION, CHANGELOG.md, README.md, PROJECT_INSTRUCTIONS.md table, zip filename; changed files as file_ddmmyy_vN.py in download dir.
+    Hanuman-ji-themed rapport.
+    User runs Windows; local data path uses backslashes: C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily.
+    User's data updates daily via his own Python script (eod2 format); 5 test stocks: APOLLO, CYIENTDLM, SYRMA, JYOTICNC, KAYNES.
+
+Progress
+Done
+
+    Verified sheet formulas after Gemini's "fix": RSI is now real (no longer identical to Stochastic; RELIANCE sheet RSI=53.56 vs real RSI14=53.31); Relative Volume still broken — 100% identical to volume, and volume column is itself a ratio (0.701) not raw volume.
+    Built v4.7 — Equity Analytics & Entry Gates (started as v4.6, bumped to v4.7 because v4.6 was already used by the Chartink pipeline changelog entry):
+        Pool E (additive 21 pts): E1 Near 52W Low (5), E2 Stochastic Oversold Turn (5), E3 Relative Volume Surge (4), E4 VPT Accumulation (4), E5 50-SMA Recovery Zone (3) — all computed natively in eval_signals from OHLCV.
+        Entry gates (hard block regardless of score): G1 PE sanity (from etmoney_stocks_list.json, PE_MAX=100), G2 liquidity floor (₹20 Cr/day avg traded value), G3 52W-Low proximity (+75% max above trailing 52W low), G4 52W-High distance (52W high ≥ 1.10x close).
+        New modules apollo_core/gates.py, apollo_core/fundamentals.py; new indicators Stochastic %K/%D, VPT, SMA50/SMA20 in indicators.py + eod2_loader._APOLLO_ALIAS_MAP.
+        GATE-BLOCKED events in backtest extract_trades, ALERT_GATE_BLOCKED in live signal_monitor.py; gates_ok/gate_reasons/bonus_e added to daily_results.
+        tests/preflight.py created (was missing from previous zips); 10/10 pass on both working copy and fresh zip extract.
+        etmoney_stocks_list.json (2379 stocks) copied into engine root.
+    Backtest verified 2022→2026 gates on vs off: APOLLO PE=123: 49→0 entries (+343%→0%, G1 blocks); CYIENTDLM PE=73: 21→9 (+51%→+33%); SYRMA PE=83: 34→12 (+160%→+57%); JYOTICNC PE=55: 17→13 (−9%→−24%); KAYNES PE=70: 24→9 (+33%→−9%).
+    Built delivery APOLLO_LIVE_010826_v1.zip (554 KB) at /workspace/APOLLO_LIVE_010826_v1.zip, /tmp/opencode/deliver/, /tmp/opencode/Monkey/download/; changed-file versions in download/changed_files/.
+    User could not access the zip from filesystem; GitHub push FAILED (credential helper returns 500); served zip via HTTP preview: https://8890-75c268c18da5f324.monkeycode-ai.live/APOLLO_LIVE_010826_v1.zip (curl 200 verified).
+    Confirmed current repo state: /tmp/opencode/Monkey branch main; git ls-remote read-auth works; download/ untracked; zip committed locally but push blocked.
+    Repo write access blocked in this environment — HTTP preview server (python http.server port 8890) is the only delivery path.
+
+In Progress
+
+    Analyzing the user's 3 reported issues to present understanding + resolution plan:
+        run_nse_engine.bat downloads data but it is NOT landing in ...\data — destination unknown (likely yfinance cache + --sync-data behavior mismatch; note user extracted zip creating double nesting APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1\data).
+        UI data-directory setting does not persist when set to C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily — need to trace st.session_state.data_dir / data_dir handling in backtest_engine/app.py and live_engine/data_replay.py.
+        Watchlist JSON File field rejects etmoney_stocks_list.json and smallcap500.json — watchlist loader expects [{sym: "...", name: ..., sector: ...}] format (515 entries in my_watchlist.json); etmoney schema uses scripCode (no .NS), smallcap500 schema differs; need adapter or loader flexibility + likely hardcoded default path.
+    Consequence of all three: Apollo Recovery / Apollo Momentum candidate generation blocked because the engine has no daily OHLCV data.
+
+Blocked
+
+    Resolution code changes blocked — user must approve the plan first.
+    GitHub push blocked (credential helper status 500); zip delivery only via HTTP preview port 8890.
+
+Key Decisions
+
+    Renko Hard Gate (RENKO_HARD_GATE=5, classify_score(r_points=...)) is dead code — eval_renko_signals is never called anywhere; flagged to user, not yet wired.
+    Gates hurt JYOTICNC (13 entries, −24%) and KAYNES (9, −9%) PnL vs gates-off — recommended user A/B test gate thresholds before trusting; G1 PE>100 blocks APOLLO entirely.
+    Pool E + gates implemented additive/hard-gate respectively per user's sheet scoring intent; engine computes sheet analytics natively (no runtime dependency on the sheet).
+    Zip delivery via HTTP preview server since GitHub write-auth unavailable.
+    Plan-first: present understanding + resolution steps, await approval before editing code.
+
+Next Steps
+
+    Present confirmed understanding of the 3 issues + resolution plan to user (await approval).
+    Plan for issue 1: trace run_nse_engine.bat → nse_engine/data_feed.py yfinance download/cache path and --sync-data flag; make downloaded CSVs land deterministically in the configured data/ dir; fix the APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1 double-nesting note in delivery instructions.
+    Plan for issue 2: make data_dir persist (e.g., st.session_state.data_dir + saved config/env override) and accept the user's absolute Windows path with spaces (C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily).
+    Plan for issue 3: add adapter or tolerant loader so etmoney_stocks_list.json (scripCode → SYMBOL.NS) and smallcap500.json are accepted by the Watchlist JSON File field; respect user-provided file path.
+    Verify candidate generation end-to-end with local eod2 data (Apollo Recovery + Apollo Momentum scans), run tests/preflight.py, bump to v4.8, deliver zip + changed files via HTTP preview link.
+    Fix sheet Relative Volume formula (still duplicates volume).
+
+Critical Context
+
+    User local data path (eod2 CSV format Date,Open,High,Low,Close,Volume,Series,TOTAL_TRADES,QTY_PER_TRADE,DLV_QTY): C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily; loads via backtest_engine/eod2_loader.py::load_eod2_stock(data_dir, symbol) returning (daily_df, fourh_df, weekly_df).
+    live_engine/watchlist.py::load_watchlist expects list of dicts {"sym": "<BASE>.NS", "name": ..., "sector": ...}; my_watchlist.json = 515 entries; etmoney_stocks_list.json schema: {stockId, displayName, scripCode, mktCapDesc, industryName, currPrice, prevClose, returnPerc1D, mktCap, high52W, low52W, currVol, ratioPE, stockUrl, lastTradedPriceDateTime}.
+    Engine commands: python -m nse_engine (flags --dry-run, --rsi-only, --gainers-only, --top N, --threshold N --max N, --force-refresh, --symbols ..., --sync-data <path>); python -m live_engine.run_headless --symbol X --quiet --once --no-resume; backtest via run_stock_backtest(data_dir, symbol, start, end, fundamental_profile=...).
+    v4.7 file versions: gates.py, fundamentals.py, constants.py, scoring.py, trade_engine.py, indicators.py, eod2_loader.py, backtest.py, app.py, signal_monitor.py, preflight.py, CHANGELOG/README/PROJECT_INSTRUCTIONS, etmoney_stocks_list.json.
+    Environment: Python 3.11.2; deps installed (pandas 3.0.5, numpy 2.4.6, streamlit 1.60.0, yfinance 1.5.2, plotly 6.9.0, openpyxl 3.1.5, pyarrow 24.0.0); engine verified working.
+    Sheet URL (public): https://docs.google.com/spreadsheets/d/1KUQbfLLKNt1J0YkIlg33GCvZnNRhXINs1mB44a8NggU/export?format=csv&gid=662724784 (1700 rows × 25 cols); sheet holds the user's NSE screening analytics the engine now mirrors.
+    Delivery link: https://8890-75c268c18da5f324.monkeycode-ai.live/APOLLO_LIVE_010826_v1.zip (and /changed_files/ folder) via background HTTP server PID 2732, terminal term_1785697594678_2, log /tmp/terminal_term_1785697594678_2.log.
+    CHANGELOG v4.6 already exists (Chartink pipeline) — hence v4.7 naming; tests/, deploy/ were missing from prior zips (preflight now created; deploy/ still missing).
+
+Relevant Files
+
+    /workspace/apollo_engine/: working engine copy (v4.7, all code + preflight verified).
+    nse_engine/run_pipeline.py + nse_engine/data_feed.py: yfinance multi-TF OHLCV + watchlist update + --sync-data; where issue-1 download destination lives.
+    backtest_engine/app.py (2046 L): Streamlit UI; title line 271 ...NSE Backtester v4.7 — Equity Analytics & Entry Gates; st.session_state.data_dir handling ~line 780; Watchlist JSON File input ~end section.
+    backtest_engine/eod2_loader.py: eod2 CSV loader + alias map (rsi21/36/56, tp28, wc21/50, plus_di, minus_di, adx, macd, macd_sig, macd_hist, stoch_k/d, vpt, sma50/20).
+    live_engine/watchlist.py + my_watchlist.json (515 entries): watchlist format contract — root cause candidate for issue 3.
+    apollo_core/gates.py, apollo_core/fundamentals.py, apollo_core/scoring.py (E1-E5), apollo_core/trade_engine.py (G1-G4 + GATE-BLOCKED), tests/preflight.py: v4.7 additions.
+    /workspace/apollo_engine/etmoney_stocks_list.json (2379 stocks) + smallcap500.json: watchlist inputs the UI currently rejects.
+    /tmp/opencode/Monkey/download/APOLLO_LIVE_010826_v1.zip + changed_files/: committed locally to repo, push blocked.
+    run_nse_engine.bat, run_apollo.bat, run_apollo_live.bat: user-facing Windows launchers driving the failing data flow.
+
+08-03 01:42:09
+
+
+I now have a full picture. Here's my confirmed understanding and resolution plan.
+What I found (root causes)
+
+Issue 1 — run_nse_engine.bat downloads but data never lands in data\
+
+    The bat's EOD2_DIR line is commented out (run_nse_engine.bat:15), so it runs the yfinance pipeline without --sync-data.
+    The yfinance download itself is cached in nse_cache/ and raw scan output goes to nse_output/ — only the curated top-100 watchlist stocks get CSVs written into data/ (run_pipeline.py:545-550). So "downloaded data" appears to vanish: it's in nse_cache/nse_output, not data/. If NIFTY-500 fetch fails or no stock passes filters, data/ stays empty entirely.
+    The output dir is resolved from the module location, not the bat (_PROJECT_ROOT / "data"), which is fragile when the folder is double-nested APOLLO_LIVE_010826_v1\APOLLO_LIVE_010826_v1.
+
+Issue 2 — UI rejects your eod2 path
+
+    backtest_engine/app.py:169-172 already hardcodes your exact path as default, but scan_eod2_directory and load_eod2_stock parse dates with strict format="%Y-%m-%d" (eod2_loader.py:73,181). The eod2-main files use dd-MMM-yyyy dates (plus extra Series/TOTAL_TRADES/QTY_PER_TRADE/DLV_QTY columns). The strict parse silently skips every file → "0 stocks" → looks like the path is rejected.
+
+Issue 3 — Watchlist JSON File rejects etmoney/smallcap
+
+    load_watchlist requires each entry to have a "sym" key (watchlist.py:101). etmoney_stocks_list.json uses scripCode (no .NS, no sym) → all entries dropped → empty list. smallcap500.json has sym but yields nothing because the data dir is empty (Issue 1/2) → "No watchlist stocks have CSVs".
+    The backtest app's universe dropdown only exposes "My Watchlist" and "Nifty Smallcap 500" — there is no way to select etmoney_stocks_list.json at all (app.py:178-181).
+
+Consequence: no OHLCV in data/ → Apollo Recovery / Apollo Momentum candidate generation is blocked (they need daily CSVs + a populated watchlist).
+Proposed plan (awaiting your approval)
+
+    CLI --data-dir: add an explicit data-dir override to nse_engine/run_pipeline.py (main + run_pipeline + save_yfinance_to_data_dir), defaulting to <engine_root>/data.
+    Bat fixes: in run_nse_engine.bat, uncomment EOD2_DIR, set it to your eod2 daily path, pass --data-dir "%CD%\data", and add a --save-all option so ALL downloaded symbols (not just top-100) get CSVs written to data/ — this is what lets Apollo Recovery/Momentum scan everything.
+    Robust eod2 parsing: make scan_eod2_directory + load_eod2_stock tolerate dd-MMM-yyyy / %Y-%m-%d / pandas-inferred dates and keep only OHLCV columns. This makes your real eod2 path work in the UI.
+    Schema-tolerant watchlist loader: live_engine/watchlist.py accepts sym, scripCode (auto → SCRIPCODE.NS), or top-level list-of-strings; add etmoney_stocks_list.json to UNIVERSE_FILES in app.py so it appears in the dropdown.
+    End-to-end verify: simulate with your 5 stocks + local eod2, generate Apollo Recovery + Apollo Momentum candidates, run tests/preflight.py, bump to v4.8, rebuild zip, deliver via the HTTP preview link.
+
+Scope note: I'll keep changes surgical (loader tolerance + CLI flag + bat wiring), no redesign of the scoring pipeline.
+
+Approve and I'll start with steps 1–4, then verify end-to-end before building v4.8.
+
+
+5 test stocks: APOLLO, CYIENTDLM, SYRMA, JYOTICNC, KAYNES - this is incorrect - All stocks in the all of the json files should be testable. No stocks should be hard coded into the engine. All data is dynamic - nothing is static or hard coded data. Data can be fetched from
+
+Google sheets Link: https://docs.google.com/spreadsheets/d/1KUQbfLLKNt1J0YkIlg33GCvZnNRhXINs1mB44a8NggU/edit?usp=sharing OR C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily or Yfinance
+
+Suggest an order of priority for the above three, based on your understanding.
+
+There needs to be a central storage for repository so that Apollo does not have to download the same data again and again from yfinance and it can reuse the downloaded data from this central data repository. We should have the ability to update this data from any of the three sources shared above. Data can be stored in any format that you deem fit provided Apollo has the ability to read this data. All Apollo engines should have the functionality built to read watchlist from all Json files in the Apollo project folder. When I say Apollo, it refers to all engine that are currently in it, be it backtesting, Live, or NSE or any other that we build in future. Do you think the idea of a central data repository is a feasible? What data format should be most appropriate taking key data considerations such as storage and retrieval in mind, share your thoughts?
+
+Entry gates (hard block regardless of score): G1 PE sanity (from etmoney_stocks_list.json, PE_MAX=100), G2 liquidity floor (₹20 Cr/day avg traded value), G3 52W-Low proximity (+75% max above trailing 52W low), G4 52W-High distance (52W high ≥ 1.10x close) - no gates
+
+Renko Hard Gate (RENKO_HARD_GATE=5, classify_score(r_points=...)) is dead code — eval_renko_signals is never called anywhere; flagged to user, not yet wired. - Explain me this functionality, what it does and how it contributes to scoring and how much points.
+
+Fix sheet Relative Volume formula (still duplicates volume).- fixed
+
+Do an audit of the engine to make sure all functionalities are firing as intended and nothing is missed out, all scoring is happening.
+
+Read above and share a revised plan.
+
+
+I've completed the audit. Here's what I found and my revised plan.
+Audit findings
+
+What IS firing correctly
+
+    34 mature signals wired in eval_signals → run_backtest (A7 + B6 + C4 + BA4 + BB3 + BC2 + BD3 incl. D1 + E5), 0–161 max, all additive.
+    12 IPO signals wired via run_ipo_backtest, normalized to 0–100.
+    classify_score at 70/50 thresholds; Pool E computed natively; eod2 loader (indicators + 4H synth + weekly) works.
+
+Dead code
+
+    Pool R / Renko (8 signals, 27 pts) never fires. eval_renko_signals is imported (scoring.py:51) but never called; R placeholders are always (0.0, False). classify_score is always called with r_points=None (trade_engine.py:108,309), so RENKO_HARD_GATE never triggers. If you want "all scoring happening", this is the biggest gap.
+
+Hard-coded / static (your main complaint)
+
+    TEST_STOCKS = ["APOLLO","CYIENTDLM","SYRMA","JYOTICNC","KAYNES"] in dashboard.py:109 and watchlist.py:52; DEFAULT_SYMBOL = "CYIENTDLM" (dashboard.py:120); only 2 universe files exposed (app.py:178-181); etmoney_stocks_list.json baked as a static PE snapshot; strict %Y-%m-%d date parse (eod2_loader.py:73,181) rejects real eod2 files; run_nse_engine.bat yfinance output lands in nse_cache//nse_output/, only top-100 curated stocks get CSVs in data/.
+
+Answers to your questions
+
+Data source priority (my recommendation): 1) eod2 local → 2) Google Sheets → 3) yfinance. Rationale: eod2 has deep daily history (backtests + indicators need 200+ bars) and is offline + daily-updated by your script. Sheets give the current-day screening snapshot (RSI, Stochastic, Relative Volume, VPT, PE, 52W ranges — the exact columns the engine scores on) and are ideal for candidate generation and the PE gate. yfinance is the network fallback for missing symbols / 4H intraday / freshness (only ~2y daily, rate-limited).
+
+Central data repository — feasible? Yes, and overdue. The engine re-downloads today. Recommend a apollo_data/ folder at project root: one file per symbol + a manifest.json. Format: Parquet — columnar (fast column reads), compressed (~80% smaller than CSV at 3500+ symbols × years), typed dates, append-friendly, and pandas reads it natively (pyarrow already installed). I'd keep CSV ingestion for your eod2 script (drop-in with the existing loader) and store canonical Parquet.
+
+Renko Hard Gate explanation: Pool R = 8 signals worth 27 pts added on top of the wired 161 (R1 Renko RSI Oversold Recovery 5, R2 RSI>50 4, R3 Brick Pattern 3, R4 Trend Align 3, R5 4H Lead 3, R6 No Bear Divergence 2, R7 Bull Divergence 4, R8 Hidden Bull Divergence 3). The hard gate (RENKO_HARD_GATE=5) was designed to downgrade a BUY to WATCHLIST/DO-NOT-ENTER when R-points < 5 even if the score is ≥70 — a Renko confirmation floor. It's a separate concept from the G1–G4 entry gates (which you've said: no gates → I'll remove G1–G4 entirely).
+Revised plan (awaiting approval)
+
+    Central data repo — apollo_data/ + data_repo module: sync CLI from all 3 sources in priority order (eod2 → Sheets → yfinance), Parquet canonical storage, manifest, --update merges new bars without re-downloading.
+    Dynamic watchlists everywhere — schema-tolerant loader (sym / scripCode→.NS / list-of-strings), auto-discover all *.json in the Apollo project folder for backtest app, live dashboard, NSE engine, chartink. Remove TEST_STOCKS + DEFAULT_SYMBOL; sort alphabetically; every stock with a CSV is testable.
+    Remove entry gates G1–G4 (gates.py, fundamentals.py, gate_frame, GATE-BLOCKED events, ALERT_GATE_BLOCKED, PE wiring) — score-only entries.
+    Renko decision — need your call: (a) wire Pool R + hard gate so all 27 pts fire (score max 188, gate at R<5), or (b) delete the dead Renko code entirely. My lean: wire it, since you asked for "all scoring happening" — but it changes score distribution, so I want your confirmation.
+    Robust eod2 parsing — flexible date formats + column subsetting so your real path works in the UI.
+    Bat fixes — uncomment EOD2_DIR → your path, write into central repo (--save-all), point --data-dir there.
+    Verify — preflight additions: all 34 (+R if wired) + 12 IPO signals fire, watchlist loads from every JSON, repo roundtrip. Bump to v4.8, rebuild zip, deliver via HTTP preview.
+
+Which way do you want the Renko pool — wire it (a) or remove it (b)? Once you confirm, I'll start.
+
+Which way do you want the Renko pool — wire it (a) or remove it (b)? Once you confirm, I'll start. - Renko is to be wired - it will contribute to scoring. As of now it will not be a gate. But what details we can extract from Renko that shows us information about the trend that can be presented in a columnar format and adds value? Your suggestion.
+
+After your response, we can go ahead with implementation.
+
+(Make sure to update Project instructions md file with all the details that should be included, including details that are to be followed in subsequent iterations, instructions that are to be followed throughout project lifecycle.) - Update project MD
+
+All project files should be included in a project zip file with proper versioning, which would be shared with the user.
+
+
+Goal
+
+    Implement the user-approved v4.8 upgrade for the Apollo engine: central data repo, dynamic watchlists/universe, entry-gate removal, Renko Pool R wiring (additive, not a gate), robust eod2 parsing, bat fixes, PROJECT_INSTRUCTIONS.md update, preflight additions, build the v4.8 zip, and deliver via HTTP preview.
+
+Constraints & Preferences
+
+    All 5 user-approved items from the revised plan confirmed in this session; implementation must start now: (1) central data repo yes, (2) dynamic watchlists yes — user also asked: can we create ONE combined JSON readable by Apollo from all JSONs while keeping features intact (e.g. if a stock is IPO, all Apollo engine lists should say so in a column), (3) remove gates G1–G4 yes, (4) Renko decision — user answered: wire Renko — it contributes to scoring, but as of now NOT a gate; also asked what Renko trend details can be extracted and presented in a columnar format (my suggestion requested), (5) robust eod2 parsing yes, (6) bat fixes yes.
+    Must also: update PROJECT_INSTRUCTIONS.md with all details including subsequent-iteration and project-lifecycle instructions; include all project files in a properly versioned zip shared with the user.
+    Karpathy rules still apply: think before coding, simplicity first, surgical changes, goal-driven.
+    Versioning rules from PROJECT_INSTRUCTIONS.md: zip [ENGINE_NAME]_[ddmmyy]_v[N].zip; app.py title must match zip version; version-bump checklist (module headers, app.py header/title, preflight CURRENT_VERSION, CHANGELOG.md, README.md, PROJECT_INSTRUCTIONS.md, zip filename).
+    Scoring architecture must stay: 21 mature signals (plus Pool E) + 12 IPO signals, RSI recovery profile D/4H/W, ENTRY_THRESHOLD=70, EXIT_THRESHOLD=50.
+    Windows user with path C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\GITHUB DATA SOL\eod2-main\eod2-main\src\eod2_data\daily.
+    Data sources with user-requested priority order: eod2 → Google Sheets → yfinance (user approved this after my recommendation). Data formats: Parquet canonical storage, CSV for eod2 ingestion, Google Sheets CSV export for current-day screening snapshot, yfinance as network fallback for missing symbols/intraday/freshness.
+    User asked explicitly: suggest Renko trend-information columnar extraction — I must give a suggestion (planned: Renko Trend, Brick Count, Current Renko RSI, Bull/Bear Divergence, Brick Pattern, 4H Lead Status, Renko R-points).
+
+Progress
+Done
+
+    Investigated all three original zip issues (root causes confirmed in prior session).
+    Confirmed Renko dead-code status: eval_renko_signals is imported (scoring.py:51) but never called; R placeholders always (0.0, False); classify_score always called with r_points=None (trade_engine.py:108,309), so RENKO_HARD_GATE never triggers.
+    Confirmed hardcoded stocks: TEST_STOCKS = ["APOLLO","CYIENTDLM","SYRMA","JYOTICNC","KAYNES"] in live_engine/dashboard.py:109 and live_engine/watchlist.py:52; DEFAULT_SYMBOL = "CYIENTDLM" (dashboard.py:120); only 2 universe files exposed (backtest_engine/app.py:178-181); etmoney_stocks_list.json baked as static PE snapshot.
+    Confirmed gates wiring: gates.py, fundamentals.py, gate_frame, evaluate_gate_row, gates_ok/gate_reasons in apollo_core/trade_engine.py:207,291-297, ALERT_GATE_BLOCKED in live_engine/signal_monitor.py:73,542-558, PE wiring in backtest_engine/backtest.py:51,82-85 and app.py:766,795.
+    Confirmed sheet fetchable: https://docs.google.com/spreadsheets/d/1KUQbfLLKNt1J0YkIlg33GCvZnNRhXINs1mB44a8NggU/export?format=csv&gid=662724784 returns 1700 rows × 25 cols; header: Ticker, CMP, % Change, Open, high, low, close, 30-DAY HGH, 30-DAY LOW, 52-Week High, 52-Week Low, Proximity to 52-WH, Proximity to 52-WL, ID Volatiltiy Spread, Stochastic Index, PE Ratio, volume, 20-Day SMA, 50-Day SMA, 200-Day SMA, % Distance from 50-SMA, RSI, Relative Volume, Traded Value, 1-Day Volume Price Trend (VPT); first row NSE:RELIANCE, 1305, 0.94, 1295, 1309.7, 1293.6, 1305, 1345.9.
+    Confirmed signal pool totals (computed from apollo_core/constants.py): wired non-R pools = A 48, B 30, C 18, BA 11, BB 10, BC 5, BD 18, E 21 → 161 pts wired; Renko R = 27 pts (R1 5, R2 4, R3 3, R4 3, R5 3, R6 2, R7 4, R8 3) → 188 pts total if wired; mature signals = 42 (34 non-R + 8 R); IPO = 12 signals normalized to 0–100 via _normalize_ipo_score(raw/IPO_MAX_RAW*100).
+    Confirmed eod2_loader.py uses strict format="%Y-%m-%d" date parse at lines 73 and 181 — real eod2 files with dd-MMM-yyyy dates silently skipped.
+    Confirmed etmoney_stocks_list.json schema: stockId, displayName, scripCode, mktCapDesc, industryName, currPrice, prevClose, returnPerc1D, mktCap, high52W, low52W, currVol, ratioPE, stockUrl, lastTradedPriceDateTime; 2379 entries; sample: {'stockId': 2046, 'displayName': 'Reliance Industries Ltd.', 'scripCode': 'RELIANCE', 'industryName': 'Refineries', 'currPrice': 1307.8, 'ratioPE': 21.9134, 'low52W': 1249.8, 'high52W': 1611.8}.
+    Confirmed smallcap500.json has 500 entries with schema {"sym": "...NS", "name": ..., "sector": ...}.
+    Confirmed data dirs: data/ currently has only 5 CSVs (APOLLO, CYIENTDLM, JYOTICNC, KAYNES, SYRMA); nse_output/ has chartink_apollo_ranked_2026-07-31_1345.csv, chartink_curated_watchlist.json, pipeline_summary_2026-07-31_1345.json.
+    Confirmed indicators module (apollo_core/indicators.py) exposes compute_rsi, compute_stochastic, compute_vpt, compute_sma, compute_tp28, compute_wc50, compute_wc21, compute_adx, compute_macd, compute_all_indicators — all needed for repo/sheet/Renko work.
+    Confirmed apollo_core/renko.py has compute_renko_bricks, compute_renko_rsi, find_renko_swings, eval_renko_signals (R1–R8, 27 pts) — all ready to wire; RENKO_SWING_LOOKBACK=30, RENKO_MIN_SWING_SEP=5, RENKO_RSI_DIFF_THRESHOLD=3.0.
+    Established tests/preflight.py (v4.7) with 10 checks; will need new checks for v4.8.
+    Confirmed run_apollo.bat, run_apollo_live.bat launch streamlit from %~dp0; run_nse_engine.bat calls python -m nse_engine (with --sync-data only if EOD2_DIR env var set — EOD2_DIR line is currently commented out).
+    Delivered v4.7 zip via HTTP preview: https://8890-75c268c18da5f324.monkeycode-ai.live/APOLLO_LIVE_010826_v1.zip (curl 200 verified).
+    (In current session) Read remaining files needed for implementation: apollo_core/renko.py full, trading_engine run_backtest loop, live_engine/signal_monitor.py bar/alert code, live_engine/run_headless.py parser, backtest_engine/eod2_loader.py full, backtest_engine/backtest.py, apollo_core/indicators.py, apollo_core/ipo_lookup.py, live_engine/dashboard.py TEST_STOCKS usages, run_nse_engine.bat, run_apollo.bat, run_apollo_live.bat.
+    Created data_repo/__init__.py module docstring (v4.8, Parquet canonical store, multi-source sync eod2→sheets→yfinance, CSV fallback).
+    Created data_repo/repo.py with: repo_path()/daily_dir()/symbol_parquet()/manifest_path()/universe_path(), load_manifest()/save_manifest()/update_symbol_manifest(), parse_ohlcv_frame() (case-insensitive column aliases {Open: [open,o], High: [high,h], Low: [low,l], Close: [close,c], Volume: [volume,vol,v]}, drops extra cols like Series/TOTAL_TRADES, coerces dates), read_daily()/has_symbol()/merge_daily() (dedupe on Date, force param overwrite), scan_repo() (mirrors scan_eod2_directory output shape: filename/symbol/rows/date_start/date_end), repo_stats(). Layout: <project_root>/apollo_data/daily/{SYMBOL}.parquet + manifest.json + apollo_universe.json.
+
+In Progress
+
+    Implementing v4.8 per approved plan — first item (central data repo) partially done: data_repo/repo.py written.
+    Next: data_repo/sources.py (eod2 dir sync, Google Sheets CSV export fetch, yfinance download), data_repo/sync.py (CLI python -m data_repo.sync --source ... --update), then universe builder, watchlist loader changes, gate removal, Renko wiring.
+
+Blocked
+
+    (none) — implementation is unblocked and underway.
+
+Key Decisions
+
+    Central data repo approved: apollo_data/ with Parquet canonical storage + manifest.json; merged --update default so no re-downloading of existing history.
+
+    Source priority approved: eod2 → Google Sheets → yfinance (local deep daily history first; sheets current screening snapshot; yfinance fallback/4H).
+
+    Renko decision (user): wire Renko into scoring — additive only, NOT a hard gate now. classify_score will be called with r_points so the R-points are visible/scored, but the RENKO_HARD_GATE downgrade block will be disabled (set 0/disabled) so scores 0–188 fully count.
+
+    Renko columnar trend details (my suggestion, to present): columns Renko Trend (UP/DOWN from brick direction), Renko Bricks (count in last 30), Renko RSI, Renko R-Points (R1–R8 total), Renko Bull Divergence (R7), Renko Hidden Bull Divergence (R8), Renko Bear Divergence (R6), Renko 4H Lead (R5), Renko Brick Pattern (R3), Renko Trend Align (R4) — giving the user actionable trend context beyond just points. These to be exposed in backtest daily-results/export and live event payloads.
+
+    Combined universe: build apollo_universe.json in central repo from ALL project JSONs (my_watchlist, smallcap500, etmoney, IPO list, any new ones) with per-symbol metadata: sym (with .NS), name, sector, memberships (list of source json names), is_ipo (flag — from ipo_listing_dates.json / listing-date logic) so all Apollo engines can show an IPO column; all engines read the same universe but keep feature compatibility via schema-tolerant loader.
+
+    Gate removal: delete gates.py/fundamentals.py wiring (G1–G4, gate_frame, GATE-BLOCKED, ALERT_GATE_BLOCKED, PE wiring) — user confirmed score-only entries.
+
+Next Steps
+
+    Finish central data repo: write data_repo/sources.py (eod2 dir sync → parquet via parse_ohlcv_frame, Google Sheets CSV export fetch → parquet, yfinance download → parquet via repo.merge_daily with force option) and data_repo/sync.py (CLI: --source [eod2|sheets|yfinance|all], --eod2-dir, --sheets-url, --symbols, --update/--force, --repo-dir, --save-all).
+    Build apollo_core/universe.py — module that auto-discovers all JSONs in project root, normalizes schemas (sym / scripCode→SYMBOL.NS / list-of-strings), merges to apollo_universe.json with is_ipo flag and memberships, caches per-process, exposes load_universe(), get_ipo_info().
+    Dynamic watchlists everywhere: remove TEST_STOCKS/DEFAULT_SYMBOL from live_engine/dashboard.py and live_engine/watchlist.py; schema-tolerant load_watchlist in watchlist.py (sym, scripCode→.NS, list-of-strings); add etmoney + auto-discovered JSONs to UNIVERSE_FILES in backtest_engine/app.py; backtest/live/NSE/chartink all read combined universe; alphabetize symbols; all stocks with CSV testable.
+    Remove gates G1–G4: delete apollo_core/gates.py + apollo_core/fundamentals.py (or leave but unwire — user wants removed, so delete/wire-out), remove gate_frame/evaluate_gate_row/gates_ok/gate_reasons from trade_engine.py, remove GATE-BLOCKED + ALERT_GATE_BLOCKED from signal_monitor.py, remove fundamental_profile/PE wiring from backtest_engine/backtest.py and app.py, remove PE_MAX/MIN_AVG_TRADED_VALUE/MAX_52W_LOW_DIST/MIN_52W_HIGH_DIST_MULT from constants.
+    Wire Renko: in trade_engine.py compute renko_daily/renko_4h once per stock, pass renko_df_d, renko_rsi_d, renko_df_4h, renko_rsi_4h into eval_signals, merge R1–R8 into results; remove R placeholders from scoring.py; call classify_score(total, r_points) with gate disabled (RENKO_HARD_GATE=0 or r_points passed but no downgrade); expose Renko trend columns (Renko Trend/Bricks/RSI/R-Points/Bull-Bear-Hidden Divergence/4H Lead/Brick Pattern/Trend Align) in backtest results export + live payload + app display.
+    Robust eod2 parsing in backtest_engine/eod2_loader.py — replace strict format="%Y-%m-%d" with flexible pd.to_datetime(errors="coerce") + column subsetting (OHLCV only, drop Series/TOTAL_TRADES) so real eod2 files load in UI.
+    Bat fixes: uncomment EOD2_DIR line in run_nse_engine.bat pointing to user's real path, call with --sync-data %EOD2_DIR% --data-dir <central repo> --save-all.
+    Update PROJECT_INSTRUCTIONS.md with: v4.8 description, lifecycle instructions (source priority, repo update workflow, iteration rules: always bump version, always update changelog + preflight + MD table, always deliver zip + changed files, run preflight before every delivery), data repo usage docs.
+    Update tests/preflight.py: bump CURRENT_VERSION to v4.8; add checks — all 34+R signals fire, 12 IPO signals fire, watchlist loads from every JSON, repo roundtrip (write parquet → read → same), universe combines all JSONs + IPO flag.
+    Bump all modules to v4.8 (headers + app.py title ...NSE Backtester v4.8 — <codename>), update CHANGELOG.md/README.md, build APOLLO_LIVE_010826_v2.zip (or similar v4.8 name), copy to /tmp/opencode/deliver/ + /tmp/opencode/Monkey/download/, serve via HTTP preview link https://8890-75c268c18da5f324.monkeycode-ai.live/...v4.8.zip (background server PID 2732 on port 8890), and send the link to the user.
+    End-to-end verify with local eod2 data (Apollo Recovery + Apollo Momentum candidate generation), run preflight, fix any failures before zip.
+
+Critical Context
+
+    Sheet data (fetched, verified): gid=662724784, 1700 rows × 25 cols; RELIANCE sample ['NSE:RELIANCE', '1305', '0.94', '1295', '1309.7', '1293.6', '1305', '1345.9'].
+    scan_repo output shape mirrors scan_eod2_directory so UI/sidebar "Scan Directory" can treat repo and CSV dir identically.
+    _PROJECT_ROOT = Path(__file__).resolve().parent.parent pattern used everywhere; repo/data_repo follows it; default repo dir = <project_root>/apollo_data.
+    etmoney_stocks_list.json — 2379 stocks, scripCode key without .NS; ipo_listing_dates.json — 2026 IPO listing dates; my_watchlist.json — 515 entries {sym,name,sector}; smallcap500.json — 500 entries.
+    Live engine reads data_dir as CSV dir; repo reader must integrate so load_available/list_available_symbols see repo parquet files too (or CSV fallback unchanged while repo used only by NSE pipeline — decision: support BOTH via DEFAULT_DATA_DIR pointing to repo and loader reading parquet if present, else CSV).
+    Renko wiring must not double-count: eval_signals currently has Pool R placeholders comment at scoring.py:684-692 saying "populated by caller via eval_renko_signals()" but no caller exists — trade_engine is the caller to add.
+    IPO detection via apollo_core/ipo_lookup.py: load_ipo_lookup, get_ipo_info, is_ipo_by_listing_date, refresh_ipo_lookup; universe is_ipo flag should use this.
+    Version note: v4.7 delivered as APOLLO_LIVE_010826_v1.zip; v4.8 zip name to be confirmed (likely same ddmmyy with v2, or v4.8 per versioning rules).
+    Python 3.11.2; deps: pandas 3.0.5, numpy 2.4.6, streamlit 1.60.0, yfinance 1.5.2, pyarrow 24.0.0 (parquet available).
+    HTTP preview server on port 8890; delivery link pattern https://8890-75c268c18da5f324.monkeycode-ai.live/<file>; GitHub push blocked in this environment.
+
+Relevant Files
+
+    /workspace/apollo_engine/data_repo/__init__.py: created — module docstring for v4.8 central data repo.
+    /workspace/apollo_engine/data_repo/repo.py: created — Parquet store/manifest/scan/merge/parse-ohlcv core.
+    /workspace/apollo_engine/data_repo/sources.py (to create): eod2 dir sync, Google Sheets export fetch, yfinance download → repo.
+    /workspace/apollo_engine/data_repo/sync.py (to create): python -m data_repo.sync CLI.
+    /workspace/apollo_engine/apollo_core/renko.py: has R1–R8 eval + compute_renko_bricks/compute_renko_rsi/find_renko_swings (lines 39–186); to be wired into trade_engine.
+    /workspace/apollo_engine/apollo_core/scoring.py: classify_score(score, r_points=None) with RENKO_HARD_GATE downgrade at lines 97–110; R placeholders at 683–692; to be updated for Renko merge + gate-off.
+    /workspace/apollo_engine/apollo_core/trade_engine.py: run_backtest (daily loop ~243), classify_score calls at 108, 309; gates at 207/291–297/328/725/795; to be updated (gates out, Renko in).
+    /workspace/apollo_engine/apollo_core/constants.py: RENKO_HARD_GATE=5, PE_MAX, MIN_AVG_TRADED_VALUE, MAX_52W_LOW_DIST, MIN_52W_HIGH_DIST_MULT, SIGNAL_DEFS (42), IPO_SIGNAL_DEFS (12), POOL_MAX (R=27).
+    /workspace/apollo_engine/apollo_core/gates.py + /workspace/apollo_engine/apollo_core/fundamentals.py: gate modules to remove/unwire.
+    /workspace/apollo_engine/backtest_engine/eod2_loader.py: strict date parse lines 73 and 181 to make flexible.
+    /workspace/apollo_engine/backtest_engine/app.py: lines 169–172 DEFAULT_DATA_DIR (hardcoded user's eod2 path), lines 178–181 UNIVERSE_FILES (dict of only 2 files → replace with auto-discovery + combined universe), lines 766/795 fundamental_profile wiring (remove), title line 271 (version bump), data_dir text_input line 299.
+    /workspace/apollo_engine/backtest_engine/backtest.py: run_stock_backtest — PE lookup lines 51, 82–85 to remove.
+    /workspace/apollo_engine/live_engine/watchlist.py: TEST_STOCKS (52), load_watchlist (schema-tolerant rework), load_available (line 149), list_available_csvs (113).
+    /workspace/apollo_engine/live_engine/dashboard.py: TEST_STOCKS (109), DEFAULT_SYMBOL (120), list_available_symbols (135–142, 158–159), load_available calls (467, 576), sidebar data_dir input (444), watchlist_path input (459–464).
+    /workspace/apollo_engine/live_engine/signal_monitor.py: ALERT_GATE_BLOCKED (73), gates_ok/gate_reasons (262–263, 542–558) — remove.
+    /workspace/apollo_engine/live_engine/run_headless.py: parser (86–117) with --symbol, --watchlist, --data-dir, --start, --end, --db, --exit-mode; DEFAULT_DATA_DIR; update for repo.
+    /workspace/apollo_engine/nse_engine/run_pipeline.py + /workspace/apollo_engine/nse_engine/data_feed.py: yfinance multi-TF fetch; --sync-data calls; save_yfinance_to_data_dir writes SYMBOL.csv to data/ (top-100 only) — needs --save-all + repo targeting.
+    /workspace/apollo_engine/run_nse_engine.bat, /workspace/apollo_engine/run_apollo.bat, /workspace/apollo_engine/run_apollo_live.bat: Windows launchers (bat fixes).
+    /workspace/apollo_engine/tests/preflight.py: CURRENT_VERSION v4.7 → bump to v4.8, add checks.
+    /workspace/apollo_engine/PROJECT_INSTRUCTIONS.md: must be updated with v4.8 + lifecycle/iteration rules.
+    /workspace/apollo_engine/etmoney_stocks_list.json, /workspace/apollo_engine/smallcap500.json, /workspace/apollo_engine/my_watchlist.json, /workspace/apollo_engine/ipo_listing_dates.json: universe sources.
+    Zip deliver path: /tmp/opencode/Monkey/download/APOLLO_LIVE_010826_v1.zip + changed_files/ (prior); v4.8 zip to follow same pattern, served via HTTP preview port 8890.
+
+
+
+
+
+
+
+
+
