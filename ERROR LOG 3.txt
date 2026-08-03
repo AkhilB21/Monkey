@@ -1,0 +1,204 @@
+[notice] A new release of pip is available: 26.1.2 -> 26.2
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>python.exe -m pip install --upgrade pip
+Requirement already satisfied: pip in C:\Users\Akhilesh Bhardwaj\AppData\Local\Programs\Python\Python312\Lib\site-packages (26.1.2)
+Collecting pip
+  Downloading pip-26.2-py3-none-any.whl.metadata (4.6 kB)
+Downloading pip-26.2-py3-none-any.whl (1.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 33.1 MB/s  0:00:00
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 26.1.2
+    Uninstalling pip-26.1.2:
+      Successfully uninstalled pip-26.1.2
+Successfully installed pip-26.2
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>python tests\preflight.py
+
+Apollo Pre-Flight v4.8 — C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8
+
+[1] Syntax check every .py file
+The system cannot find the path specified.
+      syntax error: apollo_core\__init__.py
+The system cannot find the path specified.
+      syntax error: apollo_core\bucket_classifier.py
+The system cannot find the path specified.
+      syntax error: apollo_core\constants.py
+The system cannot find the path specified.
+      syntax error: apollo_core\fundamentals.py
+The system cannot find the path specified.
+      syntax error: apollo_core\gates.py
+The system cannot find the path specified.
+      syntax error: apollo_core\indicators.py
+The system cannot find the path specified.
+      syntax error: apollo_core\ipo_lookup.py
+The system cannot find the path specified.
+      syntax error: apollo_core\renko.py
+The system cannot find the path specified.
+      syntax error: apollo_core\scoring.py
+The system cannot find the path specified.
+      syntax error: apollo_core\trade_engine.py
+The system cannot find the path specified.
+      syntax error: apollo_core\types.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\__init__.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\app.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\backtest.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\backtest_history.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\eod2_loader.py
+The system cannot find the path specified.
+      syntax error: backtest_engine\report_generator.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\__init__.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\__main__.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\auth.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\diagnose.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\fetcher.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\run_pipeline.py
+The system cannot find the path specified.
+      syntax error: chartink_pipeline\watchlist_generator.py
+The system cannot find the path specified.
+      syntax error: data_repo\__init__.py
+The system cannot find the path specified.
+      syntax error: data_repo\repo.py
+The system cannot find the path specified.
+      syntax error: data_repo\sources.py
+The system cannot find the path specified.
+      syntax error: data_repo\sync.py
+The system cannot find the path specified.
+      syntax error: live_engine\__init__.py
+The system cannot find the path specified.
+      syntax error: live_engine\__main__.py
+The system cannot find the path specified.
+      syntax error: live_engine\alert_manager.py
+The system cannot find the path specified.
+      syntax error: live_engine\cli.py
+The system cannot find the path specified.
+      syntax error: live_engine\daily_report.py
+The system cannot find the path specified.
+      syntax error: live_engine\dashboard.py
+The system cannot find the path specified.
+      syntax error: live_engine\data_replay.py
+The system cannot find the path specified.
+      syntax error: live_engine\live_feed.py
+The system cannot find the path specified.
+      syntax error: live_engine\multi_monitor.py
+The system cannot find the path specified.
+      syntax error: live_engine\run_headless.py
+The system cannot find the path specified.
+      syntax error: live_engine\run_live.py
+The system cannot find the path specified.
+      syntax error: live_engine\signal_monitor.py
+The system cannot find the path specified.
+      syntax error: live_engine\state_store.py
+The system cannot find the path specified.
+      syntax error: live_engine\watchlist.py
+The system cannot find the path specified.
+      syntax error: nse_engine\__init__.py
+The system cannot find the path specified.
+      syntax error: nse_engine\__main__.py
+The system cannot find the path specified.
+      syntax error: nse_engine\data_feed.py
+The system cannot find the path specified.
+      syntax error: nse_engine\run_pipeline.py
+The system cannot find the path specified.
+      syntax error: nse_engine\scanner.py
+The system cannot find the path specified.
+      syntax error: tests\preflight.py
+  [FAIL] all .py files compile  48 files failed
+[2] Import every module
+  [PASS] all core modules import
+[3] app.py title contains current version
+  [PASS] title has current version
+  [PASS] no stale versions in app.py
+[4] Real backtest on CYIENTDLM (end-to-end)
+  [PASS] backtest produced daily_df
+[5] Pool E signals present in eval_signals output
+  [PASS] all 5 Pool E signals in output
+[6] Entry gates evaluate without error
+  [FAIL] gate evaluation returns (bool, list)  too many values to unpack (expected 2)
+[7] Backtest determinism (run twice, compare)
+  [PASS] deterministic trades
+[8] Required files present
+  [PASS] all required files present
+[9] Gate values are informational (v4.8)
+  [PASS] evaluate_gate_row returns dict
+[10] Renko signals fire when data available
+  [PASS] renko signals evaluate
+[11] Central data repo module exists (v4.8)
+  [PASS] data_repo/__init__.py exists
+  [PASS] data_repo/repo.py exists
+  [PASS] data_repo/sources.py exists
+  [PASS] data_repo/sync.py exists
+[12] apollo_universe.json exists
+  [PASS] apollo_universe.json exists
+  [PASS] universe has symbols
+  [PASS] universe has source field
+[13] No GATE-BLOCKED events in trade_engine
+  [FAIL] no GATE-BLOCKED in trade_engine
+[14] RENKO_HARD_GATE = 0
+  [PASS] RENKO_HARD_GATE is 0
+
+============================================================
+Pre-flight complete: 17 passed, 3 failed
+Failures:
+  - all .py files compile
+  - gate evaluation returns (bool, list)
+  - no GATE-BLOCKED in trade_engine
+============================================================
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>
+
+
+
+
+
+___________________________________
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>python -c "from backtest_engine.app import run_backtest_ui; import pandas as pd; print('Import successful')"
+2026-08-03 17:37:36.845 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-08-03 17:37:36.847 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-08-03 17:37:37.151 WARNING streamlit:
+  Warning: to view a Streamlit app on a browser, use Streamlit in a file and
+  run it with the following command:
+
+    streamlit run [FILE_NAME] [ARGUMENTS]
+2026-08-03 17:37:37.151 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2026-08-03 17:37:37.151 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8\backtest_engine\app.py", line 169, in <module>
+    DEFAULT_DATA_DIR = str(_PROJECT_ROOT_PATH / "data")
+                           ^^^^^^^^^^^^^^^^^^
+NameError: name '_PROJECT_ROOT_PATH' is not defined
+
+
+_________________
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>python -c "from apollo_core.trade_engine import run_backtest; from backtest_engine.eod2_loader import load_eod2_csv; df = load_eod2_csv('data/CYIENTDLM.csv'); trades = run_backtest(df, 'CYIENTDLM', entry_thresh=70, exit_thresh=50); print(f'Total trades: {len(trades)}'); [print(f'  {t[\"entry_date\"]} -> {t[\"exit_date\"]} | Score: {t[\"entry_score\"]} | PnL: {t[\"pnl_pct\"]:.1f}%') for t in trades[:5]]"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ImportError: cannot import name 'load_eod2_csv' from 'backtest_engine.eod2_loader' (C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8\backtest_engine\eod2_loader.py). Did you mean: 'load_eod2_stock'?
+
+C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8>
+
+
+_________________
+
+
+NameError: name '_PROJECT_ROOT_PATH' is not defined
+Traceback:
+
+File "C:\Users\Akhilesh Bhardwaj\Desktop\Trading App Research\APOLLO BACKTEST STUDIO\Live Refactoring\APOLLO_LIVE_010826_v4.8\APOLLO_LIVE_v4.8\backtest_engine\app.py", line 169, in <module>
+    DEFAULT_DATA_DIR = str(_PROJECT_ROOT_PATH / "data")
+                           ^^^^^^^^^^^^^^^^^^
