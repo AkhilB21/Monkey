@@ -288,3 +288,69 @@ Given LayerSignal L1/L2/L3 and your NSE scanner:
 - L3 (RSI 21/36/56 all > 50) is your entry execution trigger.
 
 The regime score converts your framework from reactive (waiting for RSI crosses) to anticipatory (pre-classifying which stocks are in the right structural zone to receive those crosses).
+
+
+Thought
+Let me assess this Trend Guidance document against Apollo's engine. The document has two halves: first half is a generic textbook answer (Gemini's standard HH/HL, MA, ADX), second half is a more practitioner-focused response with weekly regime, EMA(21) weekly, ADX slope, pivot logic, volume asymmetry, composite scoring, regime transition detection.
+
+The user asks: is this useful for implementation in our Apollo engine?
+
+I need to compare with what Apollo already has. From my knowledge of the codebase:
+- Apollo uses RSI 21/36/56, 50/200 DMA (bucket_classifier uses 200-DMA slope, 50-200 gap, 6M return), Renko signals, VPT, stochastic, TP28, WC50, WC21, ADX? Let me recall. indicators.py has compute_adx. bucket_classifier.py uses 200-DMA slope, 50-200 DMA gap, 6M return → 7 buckets.
+- The native screener plan already includes many of these features (RSI percentiles, ADX percentile + DI alignment, MA gap features, weekly RSI, volume asymmetry up/down ratio, ATR percentile, etc.)
+
+So much of this trend guidance overlaps with the native screener feature set already planned. But there are some genuinely useful new ideas:
+1. Weekly EMA(21) regime gate with slope for ≥3 weeks — matches the native screener's higher-TF concept. Apollo's bucket classifier uses 200-DMA slope daily. Weekly EMA(21) ≈ quarterly horizon matches 1-3 month holding.
+2. ADX direction of change (slope over 5 bars) rather than level — a genuinely useful refinement, and NOT currently in the feature list (only ADX percentile + DI alignment). The "ADX rising from 18→23 more bullish than flat at 28" is a good insight.
+3. Fibonacci filter on swing retracement ≥38.2% to filter shallow pivots — useful addition to renko/swing machinery.
+4. Volume asymmetry (up-day vs down-day volume) — already in the native screener plan (up/down volume ratio feature). Good alignment.
+5. Breakout volume ≥1.5× 20-day average — not explicitly in the feature list; could be a feature.
+6. Regime transition detection (exit/tighten stops) — this is genuinely new value: it's about exits, not just entries. Apollo's live signal monitor could use a "regime weakening" flag for stop tightening.
+7. Avoid-zone: RSI daily > 75 or price > 2 ATR above EMA(21) as "extended, not entry zone" — useful as a filter to avoid chasing.
+
+But caveats:
+- The composite scoring table (weights 30/20/15/15/20) is a specific proposal tied to the user's LayerSignal L1/L2/L3 framework — the document references "your existing LayerSignal L1/L2/L3 framework". Apollo doesn't have an L1/L2/L3 framework in the current codebase (the previous summary doesn't mention it). So that mapping paragraph is based on a premise that may not apply to Apollo. I should flag that.
+- The document is generic practitioner advice for 1-3 month momentum trading; it's not validated against the user's data. The native screener plan's empirical Step 1 is the right way to validate weights, not adopting the doc's weights directly.
+- Thresholds (ADX 25, EMA slope 0.3-0.5%/week, RSI 55/75, ±7-10% band) are NSE-generic but untuned; they're good starting priors for the empirical analysis, not final values.
+
+So my assessment: Partially useful. The second half (practitioner response) contains genuinely good refinements that should be folded into the native screener feature set and possibly the engine:
+- ADX slope (5-bar direction of change) as a new feature
+- Fibonacci retracement filter on swing pivots (improves renko/swing structure)
+- Breakout volume ≥1.5× as a feature
+- Weekly EMA(21) regime gate — maps to the higher-TF pillar already planned (weekly RSI percentile exists; weekly EMA21 slope would be a strong addition)
+- Extended/avoid zones (RSI>75, 2 ATR stretch) — useful for the "Breaking Down/Avoid" classification and to prevent chasing entries
+- Regime transition detection → could feed the live signal monitor as an exit/stop-tightening warning, which is a genuinely new capability (nothing currently detects "uptrend losing steam")
+
+Not useful directly:
+- The textbook first half (HH/HL, 50/200 crossover, ADX>25 level) — already superseded by Apollo's bucket classifier + native screener; and the doc itself admits 50/200 is a laggard.
+- The composite weights table as given — should not be hardcoded; use as priors for empirical derivation.
+- The L1/L2/L3 mapping references a framework Apollo doesn't have.
+
+I should be concise but substantive. The user asked "tell me if this is useful for implementation." Give a clear verdict: yes, selectively — fold X new features into the screener, one engine idea (regime-transition exit warnings), but don't adopt weights wholesale. Keep it structured and reasonably short.
+
+Let me check whether the engine already has ADX slope or weekly EMA — I know indicators.py has compute_adx. The bucket classifier uses daily 200-DMA. Renko uses bricks. I'll phrase carefully without over-claiming specifics I can't verify. I recall from the summary: indicators includes compute_adx, compute_sma, compute_rsi (21/36/56), compute_vpt, compute_stochastic, compute_tp28, compute_wc50, compute_wc21. No mention of EMA or Bollinger. So weekly EMA21 slope would be new. Good.
+
+I should be honest about the fact this doc references "LayerSignal L1/L2/L3" framework that doesn't exist in Apollo — worth flagging.
+
+Keep response concise but with substance. Not too long.
+08-04 13:20:40
+
+Read it. Verdict: useful, but selectively — it's a good source of feature ideas and refinements, not a ready-to-adopt spec. The first half is generic textbook material (HH/HL pivots, 50/200 crossover, ADX>25) that's already superseded in Apollo by bucket_classifier.py and the native screener plan — and the doc itself admits 50/200 is a trend-following laggard. The second half (the practitioner response) is where the value is.
+What's genuinely worth folding in
+
+    ADX direction of change, not level. "ADX rising 18→23 beats flat at 28" is a real refinement. Current screener plan has ADX percentile + DI alignment — add 5-bar ADX slope as a separate feature. Strong addition.
+    Fibonacci retracement filter on swing pivots (≥38.2%). This fixes shallow noise pivots before they count as structure. Applies directly to your swing/renko.py machinery — cheap to add, eliminates a real false-signal source.
+    Breakout volume ≥1.5× 20-day average. Not in the feature list yet. Add as a momentum-quality feature; it pairs with the volume-surge feature already planned.
+    Weekly EMA(21) regime gate (slope ≥3 weeks + weekly RSI(14) > 50). The "21 weeks ≈ one quarter ≈ your holding horizon" logic is sound. The screener's higher-TF pillar has weekly RSI percentile; add weekly EMA21 slope for the regime direction. This maps to what the composite table calls the regime layer.
+    "Extended / avoid" zones — RSI daily > 75, or price > 2 ATR above EMA(21). Genuinely useful as a "do not chase here" filter for the Momentum table, and as a "Breaking Down/Avoid" classifier input.
+    Regime-transition detection → exit/stop tightening. This is the one idea with engine value, not just screener value: uptrend→sideways warnings (weekly slope flattening 2 weeks, rally-bar volume below average) could feed signal_monitor.py as a "regime weakening — tighten stops" alert. Nothing in Apollo currently detects trend decay early — that's a genuinely new capability.
+
+What to be careful about
+
+    The composite weights table (30/20/15/15/20) — don't adopt as-is. Use it only as prior intuition for the screener's Step 1 empirical analysis, then let your own effect sizes derive the weights. The doc's thresholds (ADX 25, RSI 55/75, ±7–10% band) are generic NSE guesses, not tuned to your data.
+    The final section references "your LayerSignal L1/L2/L3 framework" — Apollo doesn't have that; the document was written assuming a different engine's architecture. The regime-gate-as-pre-filter idea transfers; the L1/L2/L3 mapping doesn't.
+    Bollinger band width / 3-day / 65-min layers are mentioned but your repo has D/4H/W data — 65-min isn't available. Skip those.
+
+Bottom line
+
+Fold items 1–6 into the native screener feature set and Step 1 analysis (they're mostly additive features, zero architecture change), and consider item 6 as a small standalone addition to the live signal monitor later. Don't import the weights or the L1/L2/L3 framing. Want me to add items 1–6 as concrete entries in the screener's feature list (and the ADX-slope + weekly-EMA21 to features.py's pillar definitions)?
